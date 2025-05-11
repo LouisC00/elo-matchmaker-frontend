@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Player {
   id: number;
@@ -11,37 +11,13 @@ interface Player {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [apiKey, setApiKey] = useState("");
+  const { user, token, isLoading, logout } = useAuth();
   const [leaderboard, setLeaderboard] = useState<Player[] | null>(null);
   const [error, setError] = useState("");
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   useEffect(() => {
-    if (!token) {
-      router.push("/login");
-    } else {
-      fetchApiKey();
-    }
+    // 若登入後自動載入排行榜，也可以呼叫 fetchLeaderboard() 這邊
   }, []);
-
-  const fetchApiKey = async () => {
-    try {
-      const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setApiKey(res.data.apiKey);
-    } catch (err) {
-      setError("Failed to fetch API key");
-    }
-  };
 
   const fetchLeaderboard = async () => {
     try {
@@ -59,18 +35,19 @@ export default function DashboardPage() {
     }
   };
 
+  if (isLoading) return <p className="p-8">Loading...</p>;
+  if (!user) return <p className="p-8">Not logged in</p>;
+
   return (
     <div className="min-h-screen p-8 bg-gray-50">
-      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-4">Welcome, {user.email}</h1>
 
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-
-      {apiKey && (
-        <div className="mb-6">
-          <p className="text-sm text-gray-600">Your API Key:</p>
-          <div className="font-mono bg-white p-2 rounded border">{apiKey}</div>
+      <div className="mb-6">
+        <p className="text-sm text-gray-600">Your API Key:</p>
+        <div className="font-mono bg-white p-2 rounded border">
+          {user.apiKey}
         </div>
-      )}
+      </div>
 
       <button
         onClick={fetchLeaderboard}
@@ -78,6 +55,15 @@ export default function DashboardPage() {
       >
         Fetch Leaderboard
       </button>
+
+      <button
+        onClick={logout}
+        className="ml-4 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition"
+      >
+        Logout
+      </button>
+
+      {error && <p className="text-red-500 mt-4">{error}</p>}
 
       {leaderboard && (
         <div className="mt-6">
